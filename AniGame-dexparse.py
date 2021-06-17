@@ -3,15 +3,44 @@ import argparse
 from pathlib import Path
 
 def char2csv(chara: str):
-    elems = {}
-    talents = {}
+    elems = {"fire": "fire", "droplet": "water", "leaves": "grass",
+             "zap": "electric", "mountain": "ground",
+             "sunny": "light", "crescent_moon": "dark"}
+    talents = {"TEMPORAL_REWIND": "Temporal Rewind",
+               "OFFENSIVE_STANCE": "Offensive Stance",
+               "SILENCE": "Restricted Instinct", "METEOR": "Elemental Strike ()",
+               "BREAKER": "Breaker ()", "EXECUTIONER": "Executioner",
+               "LUCKY_COIN": "Lucky Coin", "REJUVENATION": "Rejuvenation",
+               "PROTECTOR": "Protector", "DOMINANCE": "Dominance ()",
+               "ENDURANCE": "Endurance", "DIVINE_BLESSING": "Divine Blessing",
+               "POISON": "Poison", "RECOIL": "Recoil",
+               "REGENERATION": "Regeneration", "UNDERDOG": "Underdog ()",
+               "PRECISION": "Precision", "REJUVENATION": "Rejuvenation",
+               "OVERLOAD": "Overload ()", "TRANSFORMATION": "Transformation",
+               "TRICK_ROOM": "Trick Room ()", "EVASION": "Evasion",
+               "BALANCING_STRIKE": "Balancing Strike",
+               "MIRACLE_INJECTION": "Miracle Injection",
+               "TIME_ATTACK": "Time Attack ()", "MANA_REAVER": "Mana Reaver",
+               "GRIEVOUS_LIMITER": "Grievous Limiter", "REVERSION": "Reversion",
+               "BLOOD_SURGE": "Blood Surge", "TIME_BOMB": "Time Bomb ()",
+               "PARALYSIS": "Paralysis",
+               "CELESTIAL_INFLUENCE": "Celestial Influence",
+               "AMPLIFIER": "Amplifier ()", "BURN": "Blaze",
+               "CELESTIAL_BLESSING": "Celestial Blessing",
+               "PAIN_FOR_POWER": "Pain For Power",
+               "DOUBLE_EDGED_STRIKE": "Double Edged Strike ()",
+               "DEXTERITY_DRIVE": "Dexterity Drive ()", "FROZEN": "Freeze",
+               "BLOODTHIRSTER": "Bloodthirster", "SOUL_STEALER": "Soul Stealer",
+               "VENGEANCE": "Vengeance ()", "BERSERKER": "Berserker ()",
+               "LIFE_SAP": "Life Sap", "ULTIMATE_COMBO": "Ultimate Combo",
+               "UNLUCKY_COIN": "Unlucky Coin"}
     chara.replace(": :", ":")
     info, stats = chara.split("\n")
     name, element, talent = info.split(":")
     HP, ATK, DEF, SPD = stats.split(", ")
     name = name.strip()
-    element = elems[element.strip().lower()]
-    talent = talents[talent.strip().lower()]
+    element = elems[element.strip()]
+    talent = talents[talent.strip()]
     HP = HP.replace("HP: ", "").strip()
     ATK = ATK.replace("ATK: ", "").strip()
     DEF = DEF.replace("DEF: ", "").strip()
