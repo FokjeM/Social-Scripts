@@ -3,8 +3,8 @@ import argparse
 from pathlib import Path
 
 def char2csv(chara: str):
-    elems = {"fire": "fire", "droplet": "water", "leaves": "grass",
-             "zap": "electric", "mountain": "ground",
+    elems = {"fire": "Fire", "droplet": "Water", "leaves": "Grass",
+             "zap": "Electric", "mountain": "Ground",
              "sunny": "light", "crescent_moon": "dark"}
     talents = {"TEMPORAL_REWIND": "Temporal Rewind",
                "OFFENSIVE_STANCE": "Offensive Stance",
