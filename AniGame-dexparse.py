@@ -5,7 +5,7 @@ from pathlib import Path
 def char2csv(chara: str):
     elems = {"fire": "Fire", "droplet": "Water", "leaves": "Grass",
              "zap": "Electric", "mountain": "Ground",
-             "sunny": "light", "crescent_moon": "dark"}
+             "sunny": "Light", "crescent_moon": "Dark"}
     talents = {"TEMPORAL_REWIND": "Temporal Rewind",
                "OFFENSIVE_STANCE": "Offensive Stance",
                "SILENCE": "Restricted Instinct", "METEOR": "Elemental Strike ()",
