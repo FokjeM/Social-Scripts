@@ -1,10 +1,8 @@
-import sys.argv as argv
 import argparse
-from pathlib import Path
 
 def char2csv(chara: str):
     elems = {"fire": "Fire", "droplet": "Water", "leaves": "Grass",
-             "zap": "Electric", "mountain": "Ground",
+             "zap": "Electric", "mountain": "Ground", "sparkles": "Neutral",
              "sunny": "Light", "crescent_moon": "Dark"}
     talents = {"TEMPORAL_REWIND": "Temporal Rewind",
                "OFFENSIVE_STANCE": "Offensive Stance",
@@ -34,9 +32,11 @@ def char2csv(chara: str):
                "VENGEANCE": "Vengeance ()", "BERSERKER": "Berserker ()",
                "LIFE_SAP": "Life Sap", "ULTIMATE_COMBO": "Ultimate Combo",
                "UNLUCKY_COIN": "Unlucky Coin"}
-    chara.replace(": :", ":")
-    info, stats = chara.split("\n")
-    name, element, talent = info.split(":")
+    chara = chara.replace(": :", ":")
+    print(chara)
+    # Cheap fix for trailing newlines at the end of a file
+    info, stats = chara.split(" | ")[1].split("\n")[:2]
+    name, element, talent = info[:-1].split(":")
     HP, ATK, DEF, SPD = stats.split(", ")
     name = name.strip()
     element = elems[element.strip()]
@@ -68,7 +68,7 @@ def main(infile: str, outfile: str):
     results = process_series(data)
     if outfile.lower() in stdout:
         for line in results:
-            print(line)
+            print(line.replace("\n", ""))
         return
     with open(outfile, 'w+') as o:
         for line in results:
@@ -77,10 +77,9 @@ def main(infile: str, outfile: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process AniGame dex entries")
-    parser.add_argument("--input", "-i", "--infile", allow_abbrev=False,
+    parser.add_argument("--input", "-i", "--infile",
                         help="A path to a file, or blank to specify later.")
-    parser.add_argument("--output", "-o", "--outfile", allow_abbrev=False,
-                        default="./output.csv",
+    parser.add_argument("--output", "-o", "--outfile", default="./output.csv",
                         help="A path to an outfile, blank for ./output.csv")
     args = parser.parse_args()
     main(infile=args.input, outfile=args.output)
