@@ -2,6 +2,7 @@
 ###Komodo IDE/Edit###
 *.komodoproject
 .komodotools
+testdata.*
 
 ##Language files##
 __pycache__/
