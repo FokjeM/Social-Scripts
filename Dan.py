@@ -13,7 +13,7 @@ class Person():
 Dan = Person("Dan")
 def main():
     if Dan.malding:
-        Dan._stop_mald = True
+        Dan._stop_mald = False
         while not Dan._stop_mald:
             Dan.mald()
 
