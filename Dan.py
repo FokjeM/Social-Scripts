@@ -14,8 +14,8 @@ Dan = Person("Dan")
 def main():
     if Dan.malding:
         Dan._stop_mald = False
-        while not Dan._stop_mald:
-            Dan.mald()
+        while Dan.mald():
+            print("Dan is malding...")
 
 import asyncio
 asyncio.run(main)
