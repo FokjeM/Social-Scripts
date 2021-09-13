@@ -18,9 +18,13 @@ REM Save all files from the input directories to a file
 DIR /S /B "%readdir%*.mkv" 2>NUL 1>>D:\Files.txt
 REM For every file there, run the ffmpeg commands and then delete intermediary steps
 FOR /F "tokens=*" %%F in (D:\files.txt) DO (
-    ffmpeg -i "%%F" -map 0:a:0 -acodec libopus -ar 48000 -b:a 320k -f opus - | ffmpeg -i "%%F" -i - -map_metadata 0 -map 0:v -map 0:s? -map 0:t? -map 0:b? -map 1:a -codec copy "%%~dpFtranscoded\%%~nF"
+    IF NOT EXIST "%%~dpFtranscoded\" (
+		mkdir "%%~dpFtranscoded"
+	)
+    ffmpeg -i "%%F" -map 0:a:0 -acodec libopus -ar 48000 -b:a 320k -f opus - | ffmpeg -i "%%F" -i - -map_metadata 0 -map 0:v -map 0:s? -map 0:t? -map 0:b? -map 1:a -codec copy "%%~dpFtranscoded\%%~nF.mkv"
     IF /I "%yeet%" == "y" (
         echo Deleting "%%F"
         DEL /F "%%F"
+	)
 )
 echo All done!!
