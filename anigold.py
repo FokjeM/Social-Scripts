@@ -32,7 +32,8 @@ if __name__ == "__main__":
                         help="The clan gold bonus, percentage value")
     parser.add_argument("--familiarity", "--fam", default=0,
                         help="The familiarity of the card you battle with")
-    parser.add_argument("--deviance", "-d", default=False, type=bool,
+    parser.add_argument("--deviance", "-d", default=False,
+                        action="store_true",
                         help="Whether or not to print min and max with RNG")
     args = parser.parse_args()
     print(f"Earning for {args.location}-{args.floor}")
