@@ -1,143 +1,119 @@
-#!/usr/bin/env python
-
-import argparse
 import re
-import subprocess
+from subprocess import call, DEVNULL
 from pathlib import Path
 from shutil import which
-from typing import Optional, Union
+from sys import exec_prefix
+from Typing import Optional, Union
 
-# Create an argparser insance
-parser = argparse.ArgumentParser(
-    description="Automated remuxing of matroska downloads to mp4 video."
-    "Exits with an exit code of 2 if ffmpeg can't be found, 3 if `infile`"
-    "was not a matroska video (or actually if it doesn't end in `.mkv`)."
-    "And whatever ffmpeg returns as exit code if this script didn't fail."
-)
-# Check for the useful args. Might wanna override the pattern or something
-parser.add_argument("--infile", "-i", required=True, type=str,
-                    help="The input file to process. If it's not an mkv,"
-                    "expect an early exit.")
-parser.add_argument("--ffmpeg", required=False, type=str, default=None,
-                    help="Exact path to your copy of ffmpeg. Not required if"
-                    "ffmpeg lives on your PATH")
-parser.add_argument("--pattern", "-P", required=False, type=str, default=None,
-                    help="Override the replacement pattern.")
-parser.add_argument("--keep", "-k", "--save", default=False, type=bool,
-                    required=False,
-                    help="Whether or not to keep the file. Defaults to False.")
-parser.add_argument("--overwrite", "--yes", "-y", default=True, required=False,
-                    type=bool,
-                    help="Whether or not to add the `-y` flag to ffmpeg. "
-                    "Defaults to True.")
-parser.add_argument("--debug", default=False, type=bool,
-                    help="print paths instead of doing anything.")
-# Fetch the actual args
-args = parser.parse_args()
+# For checking WeeChat import
+import_ok = True
 
-if not args.infile.endswith(".mkv"):
-    print("This script was specifically made for remuxing from "
-          "matroska to mp4 containers.")
-    print(f"{args.infile} is no bueno!")
-    exit(3)
+try:
+    import weechat
+except ImportError:
+    print("You must run this script within WeeChat!\n"
+          "http://weechat.org")
+    import_ok = False
 
+SCRIPT_NAME = "xfer_remux_mkv"
+SCRIPT_AUTHOR = "Brian Dashore <bdashore3@gmail.com>, "
+                "Riven Skaye <riven@tae.moe>"
+SCRIPT_VERSION = "0.1"
+SCRIPT_LICENSE = "GPL3"
+SCRIPT_DESC = "Runs a command on xfer_ended signal with acces to data (with trigger not possible)"
 
-# These symbols be danger!
+# These symbols are absolutely unwanted for filenames.
 danger = re.compile(r"[\~\$\{\}\!\?\|\:\s]")
-# These symbols be groupnames! Or resolutions. Just info though.
+# These symbols represent info that is already in the metadata.
 groupnames = re.compile(r"\_*\[\S+?\]\_*")
 
 
-def clean_name(name: str,
-               replacements: Union[re.Pattern, str, None] = None
-               ) -> str:
-    """Clean up a name from unsafe stuff and groupnames.
+def get_outname(name: str) -> str:
+    """Remove unwanted components from a filename and return a proper output name.
 
-    Optionally takes a replacements argument that should be a RegExp, or
-    a string representation thereof. The pattern is used to filter out
-    characters that are undesirable in the output.
-    """
-    if replacements is None:
-        replacements = danger
-    elif not isinstance(replacements, re.Pattern):
-        replacements = re.compile(replacements)
-
-    safe = re.sub(replacements, "", name)
-    return re.sub(groupnames, "", safe).replace("_-_", "-")
-
-
-def get_outname(name: str, repls: Optional[str] = None) -> str:
-    """Get a cleaned up output name representing the input file.
-
-    Pray it doesn't collide, ffmpeg doesn't override by default.
+    This function naïvely removes dangerous components from filenames to prevent
+    silly crafted names like 'somefile ; rm -rf "$SHELL"' from breaking the system.
+    If the name collides, ffmpeg will not output anything by default, unless the -y flag
+    is specified.
     """
     chunks = name.split(".")[1:]
     spliced = "".join(chunks[:-1]) + ".mp4"
-    return clean_name(spliced, repls)
+    safe = re.sub(danger, "", spliced)
+    return re.sub(groupnames, "", safe).replace("_-_", "-")
+
+
+def fetch_outpath(infile: Path) -> Path:
+    """Create the output path based on the input path.
+
+    This is used to make sure `../processed/` exists and to generate the full
+    path for ffmpeg to output the remuxed file to.
+    """
+    if not infile.is_file():
+        raise ValueError(f"{infile} is not a file or symlink!")
+    
+    if not infile.name.endswith(".mkv"):
+        raise ValueError(f"{infile.name} is not a matroska video file!")
+
+    # Make sure we have the correct, absolute directory for ffmpeg
+    indir = infile.parent.absolute().resolve()
+
+    outdir = indir.parent.joinpath("processed")
+    # Create outdir if it doesn't exist
+    outdir.mkdir(exist_ok=True)
+    outfile = get_outname(infile.name)
+    return outdir.joinpath(outfile)
 
 
 def do_ffmpeg(infile: str, outfile: str) -> int:
-    # Return the exit code of the ffmpeg call
+    """The star of the show, this calls ffmpeg and returns its exit status.
+
+    If the exit status is non-zero (indicating something went wrong), the user
+    should handle the issue themselves. There are very few things that could
+    cause this ffmpeg command to go wrong, according to the authors of this script.
+    """
     ffmpeg_args = [
-        # This saves your logs, if you use them
-        str(ffmpeg), "-hide_banner",
-        # Grab input
+        str(ffmpeg), "-y",
         "-i", infile,
-        # Copy codecs
         "-c", "copy",
-        # Don't nag about experimental mp4 codec support
+        # Allow experimental codec support like Opus and FLAC
         "-strict", "-2",
-        # Fix subs
-        "-c:s", "mov_text",
-        # Write here
-        outfile
+        # If present, allow subs to be transformed too
+        "-c:s", "mov_text", outfile
     ]
-    if args.overwrite:
-        ffmpeg_args += ["-y"]
-    return subprocess.call(ffmpeg_args)
+    return call(ffmpeg_args, stdout=DEVNULL, stderr=DEVNULL)
 
 
-if __name__ == "__main__":
-    # Get the place where your ffmpeg copy lives
-    ffmpeg = which("ffmpeg") if not args.ffmpeg else args.ffmpeg
+def xfer_ended_signal_cb(data, signal, signal_data):
+    weechat.infolist_next(signal_data)
+
+    local_filename = weechat.infolist_string(signal_data, "local_filename")
+    local_filepath = Path(local_filename)
+    try:
+        outfile = fetch_outfile(local_filepath)
+    except ValueError as e:
+        print(e)
+        return 1
+
+    return do_ffmpeg(local_filename, outfile)
+
+
+def init_config():
+    global OPTIONS
+    for option, value in OPTIONS.items():
+        weechat.config_set_desc_plugin(option, f"{value[1]} (default: '{value[0]}')")
+        if not weechat.config_is_set_plugin(option):
+            weechat.config_set_plugin(option, value[0])
+
+
+if __name__ == "__main__" and import_ok:
+    # Check if ffmpeg is present and pray that WeeChat handles errors properly if it isn't.
+    ffmpeg = which("ffmpeg")
     if ffmpeg is None:
-        # And screech if none was found
-        print("ffmpeg could not be found on the system! Please add it to"
-              "the path or install it if you haven't.\n"
-              "Otherwise, this program is unusable.")
-        exit(2)
+        raise EnvironmentError("ffmpeg could not be found on the system!")
 
-    # Get an absolute path to the infile and resolve any `./` and `../`
-    infile = Path(args.infile).absolute()
-    if not infile.is_file():
-        print(f"{infile} is not a real file, can't pass it to ffmpeg!")
-        exit(3)
-
-    infile_name = infile.name
-    # Get the directory the file is in
-    indir = infile.parent.resolve()
-    # Resolve any symlinks and relatives on the infile pathname
-    infile = infile.resolve()
-
-    # Create a directory next to indir called "processed"
-    outdir = indir.parent.joinpath("processed")
-    # Or don't create it if it exists
-    outdir.mkdir(exist_ok=True)
-
-    # Get the output filename
-    outfile = get_outname(infile_name, args.pattern)
-    # Replace the input directory with the output directory
-    outfile = outdir.joinpath(outfile)
-
-    # Are we there yet?
-    if args.debug:
-        print(f"Infile: `{infile}` in `{indir}`\n"
-              f"Outfile: `{outfile}` in `{outdir}`")
-        exit(0)
-
-    # Make sure to capture ffmpeg's result
-    result = do_ffmpeg(infile, outfile)
-    if result == 0 and not args.keep:
-        infile.unlink()
-    # And use it as our exit code.
-    exit(result)
+    registered = weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION,
+                                  SCRIPT_LICENSE, SCRIPT_DESC, "", "")
+    if registered:
+        # Don't init the config just yet
+        #init_config()
+        weechat.hook_signal("xfer_ended", "xfer_ended_signal_cb", "")
